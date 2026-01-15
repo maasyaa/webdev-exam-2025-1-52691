@@ -207,13 +207,28 @@
       notify('info', 'Корзина очищена.')
     })
 
-    qs('#deliveryDate')?.addEventListener('change', async () => {
-      await renderCart()
-    })
+    // qs('#deliveryDate')?.addEventListener('change', async () => {
+    //   await renderCart()
+    // })
 
-    qs('#deliveryInterval')?.addEventListener('change', async () => {
-      await renderCart()
-    })
+    // qs('#deliveryInterval')?.addEventListener('change', async () => {
+    //   await renderCart()
+    // })
+
+  qs('#deliveryDate')?.addEventListener('change', () => {
+  const ids = window.WebExamStorage.readCartIds()
+  if (ids.length === 0) return
+  const goods = ids.map(id => window.WebExamStorage.getGoodById ? window.WebExamStorage.getGoodById(id) : null).filter(Boolean)
+  updateTotals(goods)
+  })
+
+  qs('#deliveryInterval')?.addEventListener('change', () => {
+  const ids = window.WebExamStorage.readCartIds()
+  if (ids.length === 0) return
+  const goods = ids.map(id => window.WebExamStorage.getGoodById ? window.WebExamStorage.getGoodById(id) : null).filter(Boolean)
+  updateTotals(goods)
+  })
+
 
     window.addEventListener('webexam:korzina-updated', async () => {
       await renderCart()

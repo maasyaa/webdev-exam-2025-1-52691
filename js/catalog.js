@@ -63,31 +63,46 @@
       .join('')
   }
 
-  function buildCard (item) {
-    const inCart = window.WebExamStorage.isInCart(item.id)
+function buildCard (item) {
+  const inCart = window.WebExamStorage.isInCart(item.id)
 
-    return `
-      <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100">
-          <img src="${item.image}" class="card-img-top" alt="">
-          <div class="card-body d-flex flex-column">
-            <h3 class="h6">${item.title}</h3>
-            <div class="text-muted small mb-2">${item.category}</div>
-            <div class="fw-semibold mb-3">
-              ${window.WebExamStorage.formatPrice(item.price)}
-            </div>
-            <button
-              class="btn ${inCart ? 'btn-secondary' : 'btn-primary'} mt-auto"
-              data-id="${item.id}"
-              ${inCart ? 'disabled' : ''}
-            >
-              ${inCart ? 'В корзине' : 'В корзину'}
-            </button>
-          </div>
+  const ratingHtml = item.rating
+    ? `<div class="text-muted small mb-1">Рейтинг: ${Number(item.rating).toFixed(1)}</div>`
+    : ''
+
+  const actualPrice = Number(item._raw?.actual_price)
+  const discountPrice = Number(item._raw?.discount_price)
+  const hasDiscount = Number.isFinite(discountPrice) && discountPrice > 0 && discountPrice < actualPrice
+
+  const priceHtml = hasDiscount
+    ? `<div class="d-flex align-items-baseline gap-2">
+        <div class="fw-semibold">${window.WebExamStorage.formatPrice(item.price)}</div>
+        <div class="text-muted text-decoration-line-through small">${window.WebExamStorage.formatPrice(actualPrice)}</div>
+      </div>`
+    : `<div class="fw-semibold">${window.WebExamStorage.formatPrice(item.price)}</div>`
+
+  return `
+    <div class="col-12 col-sm-6 col-lg-4">
+      <div class="card h-100">
+        <img src="${item.image}" class="card-img-top" alt="${item.title}">
+        <div class="card-body d-flex flex-column">
+          <h3 class="h6">${item.title}</h3>
+          <div class="text-muted small mb-1">${item.category}</div>
+          ${ratingHtml}
+          ${priceHtml}
+          <button
+            class="btn ${inCart ? 'btn-secondary' : 'btn-primary'} mt-auto"
+            data-id="${item.id}"
+            ${inCart ? 'disabled' : ''}
+          >
+            ${inCart ? 'В корзине' : 'В корзину'}
+          </button>
         </div>
       </div>
-    `
-  }
+    </div>
+  `
+}
+
 
   function renderGoods (items, append = false) {
     const grid = qs('#goodsGrid')
