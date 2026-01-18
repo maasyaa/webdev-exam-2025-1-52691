@@ -43,9 +43,9 @@
     }
 
     if (body !== undefined) {
-      options.headers['Content-Type'] = 'application/json; charset=utf-8'
-      // Используем JSON.stringify без replacer для правильной сериализации
-      options.body = JSON.stringify(body)
+      options.headers['Content-Type'] = 'application/json'
+      const jsonBody = JSON.stringify(body)
+      options.body = jsonBody
     }
 
     const res = await fetch(url, options)

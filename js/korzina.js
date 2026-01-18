@@ -258,9 +258,21 @@
     const phone = (phoneEl?.value || '').trim()
     const deliveryAddress = (addressEl?.value || '').trim()
     const deliveryInterval = (deliveryIntervalEl?.value || '').trim()
-    const deliveryDate = (deliveryDateEl?.value || '').trim() // Формат YYYY-MM-DD, как в profile.js
+    const deliveryDateValue = (deliveryDateEl?.value || '').trim()
     const subscribe = subscribeEl?.checked ? 1 : 0
     const commentValue = (commentEl?.value || '').trim()
+
+    // Конвертируем дату из YYYY-MM-DD в dd.mm.yyyy для API
+    let deliveryDate = null
+    if (deliveryDateValue) {
+      const date = new Date(deliveryDateValue + 'T00:00:00')
+      if (!isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const year = date.getFullYear()
+        deliveryDate = `${day}.${month}.${year}`
+      }
+    }
 
     // Валидация обязательных полей
     if (!fullName || !email || !phone || !deliveryAddress || !deliveryDate || !deliveryInterval) {
@@ -283,21 +295,21 @@
       return
     }
 
-    // Формируем объект заказа - точно так же, как в profile.js для updateOrder
+    // Формируем объект заказа - убеждаемся, что все поля не пустые
     const orderData = {
-      full_name: fullName,
-      email: email,
-      phone: phone,
-      delivery_address: deliveryAddress,
-      delivery_date: deliveryDate, // Формат YYYY-MM-DD, как в profile.js
-      delivery_interval: deliveryInterval,
-      subscribe: subscribe,
+      full_name: String(fullName),
+      email: String(email),
+      phone: String(phone),
+      delivery_address: String(deliveryAddress),
+      delivery_date: String(deliveryDate), // Формат dd.mm.yyyy для API при создании
+      delivery_interval: String(deliveryInterval),
+      subscribe: Number(subscribe),
       good_ids: goodIds
     }
 
-    // Добавляем comment только если он не пустой (не добавляем null)
-    if (commentValue) {
-      orderData.comment = commentValue
+    // Добавляем comment только если он не пустой
+    if (commentValue && commentValue.length > 0) {
+      orderData.comment = String(commentValue)
     }
 
     try {
