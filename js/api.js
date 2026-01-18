@@ -44,22 +44,50 @@
 
     if (body !== undefined) {
       options.headers['Content-Type'] = 'application/json; charset=utf-8'
+      // Используем JSON.stringify без replacer для правильной сериализации
       options.body = JSON.stringify(body)
     }
 
     const res = await fetch(url, options)
 
     let data = null
+    let textData = null
     try {
-      data = await res.json()
+      textData = await res.text()
+      if (textData) {
+        try {
+          data = JSON.parse(textData)
+        } catch (e) {
+          // Если не JSON, оставляем как текст
+          data = textData
+        }
+      }
     } catch (e) {
       data = null
     }
 
     if (!res.ok) {
-      const msg =
-        (data && (data.error || data.message)) ||
-        `Ошибка API: ${res.status} ${res.statusText}`
+      let msg = `Ошибка API: ${res.status} ${res.statusText}`
+      
+      if (data) {
+        // Пытаемся извлечь сообщение об ошибке из разных форматов ответа
+        if (typeof data === 'string') {
+          msg = data
+        } else if (data.error) {
+          msg = typeof data.error === 'string' ? data.error : (data.error.message || msg)
+        } else if (data.message) {
+          msg = data.message
+        } else if (Array.isArray(data.errors)) {
+          // Если ошибки в виде массива
+          const errors = data.errors.map(e => e.message || e.field || String(e)).join('; ')
+          msg = errors || msg
+        } else if (typeof data === 'object') {
+          // Пытаемся найти любое сообщение об ошибке в объекте
+          const errorText = Object.values(data).find(v => typeof v === 'string') || msg
+          msg = errorText
+        }
+      }
+      
       const err = new Error(msg)
       err.status = res.status
       err.data = data
@@ -134,10 +162,6 @@
     return await requestJson('GET', `/goods/${id}`)
   }
 
-  async function getAutocomplete (query) {
-    return await requestJson('GET', '/autocomplete', { query: { query } })
-  }
-
   async function getOrders () {
     return await requestJson('GET', '/orders')
   }
@@ -165,11 +189,16 @@
     setApiKey,
     getGoods,
     getGoodById,
-    getAutocomplete,
     getOrders,
     getOrderById,
     createOrder,
     updateOrder,
     deleteOrder
+  }
+
+  // Установка API ключа по умолчанию, если он еще не установлен
+  const DEFAULT_API_KEY = '07ad9b1b-9a18-4e25-8eeb-5c6b5f3cb362'
+  if (!getApiKey()) {
+    setApiKey(DEFAULT_API_KEY)
   }
 })()

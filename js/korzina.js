@@ -215,19 +215,6 @@
     //   await renderCart()
     // })
 
-  qs('#deliveryDate')?.addEventListener('change', () => {
-  const ids = window.WebExamStorage.readCartIds()
-  if (ids.length === 0) return
-  const goods = ids.map(id => window.WebExamStorage.getGoodById ? window.WebExamStorage.getGoodById(id) : null).filter(Boolean)
-  updateTotals(goods)
-  })
-
-  qs('#deliveryInterval')?.addEventListener('change', () => {
-  const ids = window.WebExamStorage.readCartIds()
-  if (ids.length === 0) return
-  const goods = ids.map(id => window.WebExamStorage.getGoodById ? window.WebExamStorage.getGoodById(id) : null).filter(Boolean)
-  updateTotals(goods)
-  })
 
 
     window.addEventListener('webexam:korzina-updated', async () => {
@@ -245,9 +232,138 @@
     input.min = `${yyyy}-${mm}-${dd}`
   }
 
+  async function handleOrderSubmit (e) {
+    e.preventDefault()
+
+    const form = e.target
+    const ids = window.WebExamStorage.readCartIds()
+
+    if (ids.length === 0) {
+      notify('danger', 'Корзина пуста.')
+      return
+    }
+
+    // Извлекаем значения напрямую из элементов формы
+    const fullNameEl = qs('#fullName')
+    const emailEl = qs('#email')
+    const phoneEl = qs('#phone')
+    const addressEl = qs('#address')
+    const deliveryDateEl = qs('#deliveryDate')
+    const deliveryIntervalEl = qs('#deliveryInterval')
+    const subscribeEl = qs('#subscribe')
+    const commentEl = qs('#comment')
+
+    const fullName = (fullNameEl?.value || '').trim()
+    const email = (emailEl?.value || '').trim()
+    const phone = (phoneEl?.value || '').trim()
+    const deliveryAddress = (addressEl?.value || '').trim()
+    const deliveryInterval = (deliveryIntervalEl?.value || '').trim()
+    const deliveryDate = (deliveryDateEl?.value || '').trim() // Формат YYYY-MM-DD, как в profile.js
+    const subscribe = subscribeEl?.checked ? 1 : 0
+    const commentValue = (commentEl?.value || '').trim()
+
+    // Валидация обязательных полей
+    if (!fullName || !email || !phone || !deliveryAddress || !deliveryDate || !deliveryInterval) {
+      const missingFields = []
+      if (!fullName) missingFields.push('Имя')
+      if (!email) missingFields.push('Email')
+      if (!phone) missingFields.push('Телефон')
+      if (!deliveryAddress) missingFields.push('Адрес доставки')
+      if (!deliveryDate) missingFields.push('Дата доставки')
+      if (!deliveryInterval) missingFields.push('Временной интервал')
+      notify('danger', `Заполните все обязательные поля: ${missingFields.join(', ')}`)
+      return
+    }
+
+    // Убеждаемся, что good_ids - это массив чисел
+    const goodIds = ids.map(id => Number(id)).filter(id => Number.isFinite(id))
+
+    if (goodIds.length === 0) {
+      notify('danger', 'В корзине нет товаров.')
+      return
+    }
+
+    // Формируем объект заказа - точно так же, как в profile.js для updateOrder
+    const orderData = {
+      full_name: fullName,
+      email: email,
+      phone: phone,
+      delivery_address: deliveryAddress,
+      delivery_date: deliveryDate, // Формат YYYY-MM-DD, как в profile.js
+      delivery_interval: deliveryInterval,
+      subscribe: subscribe,
+      good_ids: goodIds
+    }
+
+    // Добавляем comment только если он не пустой (не добавляем null)
+    if (commentValue) {
+      orderData.comment = commentValue
+    }
+
+    try {
+      showLoading(true)
+      await window.WebExamApi.createOrder(orderData)
+
+      window.WebExamStorage.clearCart()
+      form.reset()
+
+      notify('success', 'Заказ успешно оформлен!')
+      await renderCart()
+
+      // Перенаправление на страницу профиля через небольшую задержку
+      setTimeout(() => {
+        window.location.href = 'profile.html'
+      }, 2000)
+    } catch (e) {
+      // Пытаемся извлечь детальную информацию об ошибке
+      let errorMessage = 'Не удалось оформить заказ'
+      if (e.data) {
+        if (typeof e.data === 'string') {
+          errorMessage += ': ' + e.data
+        } else if (e.data.error) {
+          errorMessage += ': ' + e.data.error
+        } else if (e.data.message) {
+          errorMessage += ': ' + e.data.message
+        } else if (Array.isArray(e.data.errors)) {
+          const errors = e.data.errors.map(err => err.message || err).join('; ')
+          errorMessage += ': ' + errors
+        }
+      } else if (e.message) {
+        errorMessage += ': ' + e.message
+      }
+
+      notify('danger', errorMessage)
+    } finally {
+      showLoading(false)
+    }
+  }
+
+  function bindOrderForm () {
+    const form = qs('#orderForm')
+    if (!form) return
+
+    form.addEventListener('submit', handleOrderSubmit)
+
+    // Обновление итогов при изменении даты/интервала доставки
+    qs('#deliveryDate')?.addEventListener('change', async () => {
+      const ids = window.WebExamStorage.readCartIds()
+      if (ids.length === 0) return
+      const goods = await loadGoodsByCartIds(ids)
+      updateTotals(goods)
+    })
+
+    qs('#deliveryInterval')?.addEventListener('change', async () => {
+      const ids = window.WebExamStorage.readCartIds()
+      if (ids.length === 0) return
+      const goods = await loadGoodsByCartIds(ids)
+      updateTotals(goods)
+    })
+  }
+
   function bind () {
     setMinDeliveryDate()
     bindCartActions()
+    bindOrderForm()
     renderCart()
   }
 

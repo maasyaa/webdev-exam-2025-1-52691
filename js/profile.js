@@ -219,29 +219,8 @@
     })
   }
 
-  function bindApiKey () {
-    const input = qs('#apiKeyInput')
-    if (!input) return
-
-    input.value = window.WebExamApi.getApiKey()
-
-    qs('#apiKeySaveBtn')?.addEventListener('click', () => {
-      window.WebExamApi.setApiKey(input.value.trim())
-      notify('success', 'Ключ сохранён.')
-      loadOrders()
-    })
-
-    qs('#apiKeyClearBtn')?.addEventListener('click', () => {
-      window.WebExamApi.setApiKey('')
-      input.value = ''
-      notify('info', 'Ключ очищен.')
-      loadOrders()
-    })
-  }
-
   function bind () {
     updateCartBadge()
-    bindApiKey()
     bindTableActions()
 
     qs('#refreshBtn')?.addEventListener('click', loadOrders)
