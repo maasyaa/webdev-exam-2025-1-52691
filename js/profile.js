@@ -65,6 +65,26 @@
     qs('#ordersTbody').innerHTML = ''
   }
 
+  function calculateOrderSum (order) {
+    // Если есть total_sum, используем его
+    if (order.total_sum && order.total_sum > 0) {
+      return order.total_sum
+    }
+    
+    // Если есть goods с ценами, вычисляем сумму
+    if (order.goods && Array.isArray(order.goods) && order.goods.length > 0) {
+      return order.goods.reduce((sum, g) => {
+        const price = (g.discount_price && g.discount_price > 0 && g.discount_price < (g.actual_price || Infinity))
+          ? g.discount_price
+          : (g.actual_price || g.price || 0)
+        const count = g.quantity || 1
+        return sum + (price * count)
+      }, 0)
+    }
+    
+    return 0
+  }
+
   function renderTable (orders) {
     const tbody = qs('#ordersTbody')
     if (!tbody) return
@@ -76,12 +96,19 @@
 
     setHidden(qs('#emptyState'), true)
 
-    tbody.innerHTML = orders.map(o => `
+    tbody.innerHTML = orders.map(o => {
+      // Определяем количество товаров - может быть в goods или good_ids
+      const goodsCount = o.goods ? o.goods.length : (o.good_ids ? o.good_ids.length : 0)
+      
+      // Вычисляем сумму заказа
+      const totalSum = calculateOrderSum(o)
+      
+      return `
       <tr data-id="${o.id}">
         <td>${o.id}</td>
         <td>${formatDate(o.created_at)}</td>
-        <td>${(o.goods || []).length}</td>
-        <td>${formatPrice(o.total_sum)}</td>
+        <td>${goodsCount}</td>
+        <td>${formatPrice(totalSum)}</td>
         <td>${formatDate(o.delivery_date)} ${o.delivery_interval || ''}</td>
         <td class="text-end">
           <div class="btn-group btn-group-sm">
@@ -91,14 +118,81 @@
           </div>
         </td>
       </tr>
-    `).join('')
+    `}).join('')
+  }
+
+  async function loadOrderSums (orders) {
+    // Для заказов с good_ids без total_sum загружаем товары и вычисляем сумму
+    const ordersNeedingSums = orders.filter(o => 
+      !o.total_sum && o.good_ids && Array.isArray(o.good_ids) && o.good_ids.length > 0
+    )
+
+    if (ordersNeedingSums.length === 0) return
+
+    // Загружаем все уникальные ID товаров
+    const allGoodIds = new Set()
+    ordersNeedingSums.forEach(order => {
+      order.good_ids.forEach(id => allGoodIds.add(id))
+    })
+
+    // Загружаем данные о товарах
+    const goodsMap = new Map()
+    const goodsPromises = Array.from(allGoodIds).map(async (id) => {
+      try {
+        const good = await window.WebExamApi.getGoodById(id)
+        return good ? { id, good } : null
+      } catch (e) {
+        return null
+      }
+    })
+
+    const goodsResults = await Promise.all(goodsPromises)
+    goodsResults.forEach(result => {
+      if (result) {
+        goodsMap.set(result.id, result.good)
+      }
+    })
+
+    // Вычисляем суммы и обновляем таблицу
+    ordersNeedingSums.forEach(order => {
+      const goodsCount = {}
+      order.good_ids.forEach(id => {
+        goodsCount[id] = (goodsCount[id] || 0) + 1
+      })
+
+      const totalSum = Object.entries(goodsCount).reduce((sum, [id, count]) => {
+        const good = goodsMap.get(Number(id))
+        if (good) {
+          const price = (good.discount_price && good.discount_price > 0 && good.discount_price < (good.actual_price || Infinity))
+            ? good.discount_price
+            : (good.actual_price || good.price || 0)
+          return sum + (price * count)
+        }
+        return sum
+      }, 0)
+
+      // Обновляем ячейку суммы в таблице
+      const row = qs(`tr[data-id="${order.id}"]`)
+      if (row) {
+        const sumCell = row.querySelector('td:nth-child(4)')
+        if (sumCell) {
+          sumCell.textContent = formatPrice(totalSum)
+        }
+      }
+    })
   }
 
   async function loadOrders () {
     showLoading(true)
     try {
       const orders = await window.WebExamApi.getOrders()
-      renderTable(Array.isArray(orders) ? orders : [])
+      const ordersArray = Array.isArray(orders) ? orders : []
+      renderTable(ordersArray)
+      
+      // Асинхронно загружаем суммы для заказов, где они не были вычислены
+      loadOrderSums(ordersArray).catch(() => {
+        // Игнорируем ошибки при загрузке сумм
+      })
     } catch (e) {
       notify('danger', 'Не удалось загрузить заказы.')
       renderEmpty()
@@ -119,15 +213,70 @@
       qs('#d_address').textContent = o.delivery_address
       qs('#d_delivery').textContent =
         `${formatDate(o.delivery_date)} ${o.delivery_interval || ''}`
-      qs('#d_total').textContent = formatPrice(o.total_sum)
       qs('#d_comment').textContent = o.comment || '—'
 
+      // Обработка товаров - может быть goods или good_ids
       const goodsBox = qs('#d_goods')
+      let loadedGoods = []
+      
       if (goodsBox) {
-        goodsBox.innerHTML = (o.goods || []).map(g =>
-          `<div>#${g.id} — ${g.name}</div>`
-        ).join('')
+        let goodsHtml = ''
+        
+        if (o.goods && Array.isArray(o.goods) && o.goods.length > 0) {
+          // Если товары уже в объекте заказа
+          loadedGoods = o.goods
+          goodsHtml = o.goods.map(g =>
+            `<div>#${g.id} — ${g.name || 'Товар'}</div>`
+          ).join('')
+        } else if (o.good_ids && Array.isArray(o.good_ids) && o.good_ids.length > 0) {
+          // Если только ID товаров - загружаем их
+          const uniqueIds = [...new Set(o.good_ids)]
+          const goodsPromises = uniqueIds.map(async (goodId) => {
+            try {
+              const good = await window.WebExamApi.getGoodById(goodId)
+              return good
+            } catch (e) {
+              return null
+            }
+          })
+          
+          loadedGoods = await Promise.all(goodsPromises)
+          const goods = loadedGoods.filter(Boolean)
+          const goodsCount = {}
+          o.good_ids.forEach(id => {
+            goodsCount[id] = (goodsCount[id] || 0) + 1
+          })
+          
+          goodsHtml = goods.map(good => {
+            const count = goodsCount[good.id] || 1
+            const name = good.name || good.title || `Товар #${good.id}`
+            return `<div>#${good.id} — ${name}${count > 1 ? ` (${count} шт.)` : ''}</div>`
+          }).join('')
+        }
+        
+        goodsBox.innerHTML = goodsHtml || '<div>Товары не указаны</div>'
       }
+      
+      // Вычисляем сумму, если её нет
+      let totalSum = o.total_sum
+      if (!totalSum && loadedGoods.length > 0) {
+        const goodsCount = {}
+        if (o.good_ids) {
+          o.good_ids.forEach(id => {
+            goodsCount[id] = (goodsCount[id] || 0) + 1
+          })
+        }
+        
+        totalSum = loadedGoods.filter(Boolean).reduce((sum, g) => {
+          const price = g.discount_price && g.discount_price > 0 && g.discount_price < (g.actual_price || Infinity)
+            ? g.discount_price
+            : (g.actual_price || g.price || 0)
+          const count = goodsCount[g.id] || 1
+          return sum + (price * count)
+        }, 0)
+      }
+      
+      qs('#d_total').textContent = formatPrice(totalSum || 0)
 
       new bootstrap.Modal(qs('#detailsModal')).show()
     } catch (e) {
