@@ -16,36 +16,20 @@
     <div class="container py-3">
       <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
 
-        <a href="index.html" class="text-decoration-none d-flex align-items-center gap-2">
-          <span class="fs-4 fw-semibold text-dark">noAmazon</span>
-        </a>
+        <a href="index.html" class="text-decoration-none d-flex align-items-center gap-2"><span class="fs-4 fw-semibold text-dark">noAmazon</span></a>
 
         <nav class="d-flex align-items-center gap-2">
-          <a
-            class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
-            href="index.html"
-            aria-label="Перейти в каталог"
-            title="Каталог"
-          >
+          <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="index.html" aria-label="Перейти в каталог" title="Каталог" >
             <i class="bi bi-grid"></i>
             <span class="d-none d-md-inline">Каталог</span>
           </a>
 
-          <a
-            class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
-            href="profile.html"
-            aria-label="Перейти в личный кабинет"
-            title="Личный кабинет"
-          >
+          <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="profile.html" aria-label="Перейти в личный кабинет" title="Личный кабинет" >
             <i class="bi bi-person"></i>
             <span class="d-none d-md-inline">Личный Кабинет</span>
           </a>
 
-          <span
-            class="btn btn-secondary d-inline-flex align-items-center gap-2 disabled"
-            aria-label="Товаров в корзине"
-            title="Товаров в корзине"
-          >
+          <span class="btn btn-secondary d-inline-flex align-items-center gap-2 disabled" aria-label="Товаров в корзине" title="Товаров в корзине" >
             <i class="bi bi-korzina"></i>
             <span class="badge text-bg-light" id="korzinaCountBadge">0</span>
           </span>
@@ -65,14 +49,10 @@
       <section class="col-12 col-lg-7">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h4 m-0">Корзина</h1>
-          <button class="btn btn-outline-secondary btn-sm" type="button" id="clearkorzinaBtn">
-            Очистить
-          </button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" id="clearkorzinaBtn">Очистить</button>
         </div>
 
-        <div class="d-none text-center text-muted border rounded-3 p-5 bg-white" id="emptykorzina">
-          Корзина пуста. Перейдите в каталог, чтобы добавить товары.
-        </div>
+        <div class="d-none text-center text-muted border rounded-3 p-5 bg-white" id="emptykorzina">Корзина пуста. Перейдите в каталог, чтобы добавить товары.</div>
 
         <div class="row g-3" id="korzinaGrid"></div>
 
@@ -103,9 +83,7 @@
 
             <div class="form-check">
               <input class="form-check-input" id="subscribe" name="subscribe" type="checkbox">
-              <label class="form-check-label" for="subscribe">
-                Согласен получать рассылку
-              </label>
+              <label class="form-check-label" for="subscribe">Согласен получать рассылку</label>
             </div>
 
             <div>
@@ -151,9 +129,7 @@
               </div>
             </div>
 
-            <button class="btn btn-primary w-100" type="submit" id="submitOrderBtn" disabled>
-              Оформить
-            </button>
+            <button class="btn btn-primary w-100" type="submit" id="submitOrderBtn" disabled>Оформить</button>
 
             <div class="form-text">
               Заказ можно оформить только если в корзине есть товары.
