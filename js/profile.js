@@ -1,23 +1,28 @@
 (() => {
   'use strict'
 
+  // Возвращает первый элемент по селектору
   function qs (sel) {
     return document.querySelector(sel)
   }
 
+  // Возвращает все элементы по селектору
   function qsa (sel) {
     return Array.from(document.querySelectorAll(sel))
   }
 
+  // Скрывает/отображает элемент
   function setHidden (el, hidden) {
     if (!el) return
     el.classList.toggle('d-none', Boolean(hidden))
   }
 
+  // Показывает/скрывает индикатор загрузки
   function showLoading (show) {
     setHidden(qs('#loadingIndicator'), !show)
   }
 
+  // Отображает уведомление пользователю
   function notify (type, text) {
     const box = qs('#notifications')
     if (!box) return
@@ -43,6 +48,7 @@
     }, 5000)
   }
 
+  // Форматирует дату в русский формат
   function formatDate (iso) {
     if (!iso) return '—'
     const d = new Date(iso)
@@ -50,21 +56,25 @@
     return d.toLocaleDateString('ru-RU')
   }
 
+  // Форматирует цену (добавляет ₽)
   function formatPrice (v) {
     return window.WebExamStorage.formatPrice(v)
   }
 
+  // Обновляет значок количества товаров в корзине
   function updateCartBadge () {
     const badge = qs('#korzinaCountBadge')
     if (!badge) return
     badge.textContent = window.WebExamStorage.getCartCount()
   }
 
+  // Показывает состояние "нет заказов"
   function renderEmpty () {
     setHidden(qs('#emptyState'), false)
     qs('#ordersTbody').innerHTML = ''
   }
 
+  // Рассчитывает сумму заказа
   function calculateOrderSum (order) {
     // Если есть total_sum, используем его
     if (order.total_sum && order.total_sum > 0) {
@@ -85,6 +95,7 @@
     return 0
   }
 
+  // Отображает заказы в таблице
   function renderTable (orders) {
     const tbody = qs('#ordersTbody')
     if (!tbody) return
@@ -121,6 +132,7 @@
     `}).join('')
   }
 
+  // Асинхронно загружает суммы для заказов, где они не были вычислены
   async function loadOrderSums (orders) {
     // Для заказов с good_ids без total_sum загружаем товары и вычисляем сумму
     const ordersNeedingSums = orders.filter(o => 
@@ -182,6 +194,7 @@
     })
   }
 
+  // Загружает список заказов
   async function loadOrders () {
     showLoading(true)
     try {
@@ -201,6 +214,7 @@
     }
   }
 
+  // Открывает модальное окно просмотра заказа
   async function openDetails (id) {
     try {
       const o = await window.WebExamApi.getOrderById(id)
@@ -284,6 +298,7 @@
     }
   }
 
+  // Открывает модальное окно редактирования заказа
   async function openEdit (id) {
     try {
       const o = await window.WebExamApi.getOrderById(id)
@@ -304,6 +319,7 @@
     }
   }
 
+  // Сохраняет изменения в заказе
   async function saveEdit () {
     const id = qs('#e_id').value
     if (!id) return
@@ -329,12 +345,14 @@
     }
   }
 
+  // Открывает модальное окно подтверждения удаления заказа
   function openDelete (id) {
     qs('#del_id').value = id
     qs('#del_label').textContent = `#${id}`
     new bootstrap.Modal(qs('#deleteModal')).show()
   }
 
+  // Подтверждает удаление заказа
   async function confirmDelete () {
     const id = qs('#del_id').value
     if (!id) return
@@ -349,6 +367,7 @@
     }
   }
 
+  // Привязывает обработчики к кнопкам действий с заказами
   function bindTableActions () {
     qs('#ordersTbody')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-action]')
@@ -368,6 +387,7 @@
     })
   }
 
+  // Инициализирует страницу профиля
   function bind () {
     updateCartBadge()
     bindTableActions()

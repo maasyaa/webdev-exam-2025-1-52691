@@ -1,19 +1,23 @@
 (() => {
   'use strict'
 
+  // Возвращает первый элемент по селектору
   function qs (sel) {
     return document.querySelector(sel)
   }
 
+  // Скрывает/отображает элемент
   function setHidden (el, hidden) {
     if (!el) return
     el.classList.toggle('d-none', Boolean(hidden))
   }
 
+  // Показывает/скрывает индикатор загрузки
   function showLoading (show) {
     setHidden(qs('#loadingIndicator'), !show)
   }
 
+  // Отображает уведомление пользователю
   function notify (type, text) {
     const box = qs('#notifications')
     if (!box) return
@@ -41,6 +45,7 @@
     }, 5000)
   }
 
+  // Выбирает цену товара (учитывает скидки)
   function pickPrice (good) {
     const dp = Number(good.discount_price)
     const ap = Number(good.actual_price)
@@ -49,6 +54,7 @@
     return Number.isFinite(ap) ? ap : 0
   }
 
+  // Отображает товар в корзине
   function renderCartItem (good) {
     const price = pickPrice(good)
     const hasDiscount = Number(good.discount_price) > 0 && Number(good.discount_price) < Number(good.actual_price)
@@ -81,10 +87,12 @@
     `
   }
 
+  // Рассчитывает сумму всех товаров в корзине
   function getGoodsSum (goods) {
     return goods.reduce((sum, g) => sum + pickPrice(g), 0)
   }
 
+  // Парсит начальный час из временного интервала (например, из "08:00-12:00" возвращает 8)
   function parseIntervalStartHour (interval) {
     const s = String(interval || '')
     const m = s.match(/^(\d{2}):(\d{2})/)
@@ -93,6 +101,7 @@
     return Number.isFinite(h) ? h : null
   }
 
+  // Рассчитывает стоимость доставки
   function calcDeliveryCost () {
     const dateStr = qs('#deliveryDate')?.value || ''
     const interval = qs('#deliveryInterval')?.value || ''
@@ -112,6 +121,7 @@
     return base
   }
 
+  // Обновляет итоговые суммы (товары, доставка, итого)
   function updateTotals (goods) {
     const goodsSum = getGoodsSum(goods)
     const deliverySum = calcDeliveryCost()
@@ -122,18 +132,21 @@
     qs('#totalSumText').textContent = window.WebExamStorage.formatPrice(totalSum)
   }
 
+  // Обновляет значок количества товаров в корзине
   function updateCartBadge () {
     const badge = qs('#korzinaCountBadge')
     if (!badge) return
     badge.textContent = window.WebExamStorage.getCartCount()
   }
 
+  // Включает/отключает кнопку оформления заказа
   function setSubmitEnabled (enabled) {
     const btn = qs('#submitOrderBtn')
     if (!btn) return
     btn.disabled = !enabled
   }
 
+  // Загружает товары по ID из корзины
   async function loadGoodsByCartIds (ids) {
     const tasks = ids.map(async (id) => {
       try {
@@ -147,6 +160,7 @@
     return res.filter(Boolean)
   }
 
+  // Отображает содержимое корзины
   async function renderCart () {
     const grid = qs('#korzinaGrid')
     const empty = qs('#emptykorzina')
@@ -185,6 +199,7 @@
     updateTotals(goods)
   }
 
+  // Привязывает обработчики событий для корзины
   function bindCartActions () {
     qs('#korzinaGrid')?.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-remove-id]')
@@ -207,21 +222,12 @@
       notify('info', 'Корзина очищена.')
     })
 
-    // qs('#deliveryDate')?.addEventListener('change', async () => {
-    //   await renderCart()
-    // })
-
-    // qs('#deliveryInterval')?.addEventListener('change', async () => {
-    //   await renderCart()
-    // })
-
-
-
     window.addEventListener('webexam:korzina-updated', async () => {
       await renderCart()
     })
   }
 
+  // Устанавливает минимальную дату доставки (сегодня)
   function setMinDeliveryDate () {
     const input = qs('#deliveryDate')
     if (!input) return
@@ -232,6 +238,7 @@
     input.min = `${yyyy}-${mm}-${dd}`
   }
 
+  // Обрабатывает отправку формы заказа
   async function handleOrderSubmit (e) {
     e.preventDefault()
 
@@ -350,6 +357,7 @@
     }
   }
 
+  // Привязывает обработчики событий для формы заказа
   function bindOrderForm () {
     const form = qs('#orderForm')
     if (!form) return
@@ -372,6 +380,7 @@
     })
   }
 
+  // Инициализирует страницу корзины
   function bind () {
     setMinDeliveryDate()
     bindCartActions()

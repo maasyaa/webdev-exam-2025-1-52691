@@ -5,10 +5,12 @@
   const API_PREFIX = '/exam-2024-1/api'
   const API_KEY_STORAGE = 'webexam_api_key'
 
+  // Получает API-ключ из localStorage
   function getApiKey () {
     return localStorage.getItem(API_KEY_STORAGE) || ''
   }
 
+  // Сохраняет API-ключ в localStorage
   function setApiKey (value) {
     const v = String(value || '').trim()
     if (!v) {
@@ -18,11 +20,21 @@
     localStorage.setItem(API_KEY_STORAGE, v)
   }
 
+  // Формирует полный URL для API-запроса с параметрами и ключом
   function buildUrl (path, query = {}) {
     const url = new URL(API_HOST + API_PREFIX + path)
 
-    const apiKey = getApiKey()
-    if (apiKey) url.searchParams.set('api_key', apiKey)
+    // Всегда добавляем API ключ - если его нет в localStorage, устанавливаем дефолтный
+    let apiKey = getApiKey()
+    if (!apiKey || apiKey.trim() === '') {
+      const DEFAULT_API_KEY = '07ad9b1b-9a18-4e25-8eeb-5c6b5f3cb362'
+      setApiKey(DEFAULT_API_KEY)
+      apiKey = DEFAULT_API_KEY
+    }
+    
+    if (apiKey) {
+      url.searchParams.set('api_key', apiKey)
+    }
 
     Object.entries(query).forEach(([k, v]) => {
       if (v === undefined || v === null) return
@@ -34,6 +46,7 @@
     return url.toString()
   }
 
+  // Выполняет HTTP-запрос к API с обработкой ошибок
   async function requestJson (method, path, { query, body } = {}) {
     const url = buildUrl(path, query)
 
@@ -48,7 +61,22 @@
       options.body = jsonBody
     }
 
-    const res = await fetch(url, options)
+    let res
+    try {
+      res = await fetch(url, options)
+    } catch (e) {
+      // Обработка сетевых ошибок (SSL, соединение и т.д.)
+      let errorMsg = 'Ошибка соединения с сервером'
+      if (e.message && e.message.includes('CERT')) {
+        errorMsg = 'Ошибка SSL сертификата. Проверьте дату и время на компьютере или обратитесь к администратору.'
+      } else if (e.message) {
+        errorMsg = `Ошибка сети: ${e.message}`
+      }
+      const err = new Error(errorMsg)
+      err.status = 0
+      err.isNetworkError = true
+      throw err
+    }
 
     let data = null
     let textData = null
@@ -97,6 +125,7 @@
     return data
   }
 
+  // Выбирает цену товара (учитывает скидки)
   function pickPrice (good) {
     const ap = Number(good?.actual_price)
     const dp = Number(good?.discount_price)
@@ -107,6 +136,7 @@
     return 0
   }
 
+  // Нормализует данные товара для отображения в каталоге
   function normalizeGoodForCatalog (good) {
     return {
       id: good.id,
@@ -119,6 +149,7 @@
     }
   }
 
+  // Нормализует ответ API с товарами в единый формат
   function normalizeGoodsResponse (data) {
     // Вариант A: { items, total }
     if (data && Array.isArray(data.items)) {
@@ -153,35 +184,43 @@
     return { items: [], total: 0 }
   }
 
+  // Получает список товаров с фильтрацией и пагинацией
   async function getGoods (params = {}) {
     const data = await requestJson('GET', '/goods', { query: params })
     return normalizeGoodsResponse(data)
   }
 
+  // Получает товар по ID
   async function getGoodById (id) {
     return await requestJson('GET', `/goods/${id}`)
   }
 
+  // Получает список всех заказов
   async function getOrders () {
     return await requestJson('GET', '/orders')
   }
 
+  // Получает заказ по ID
   async function getOrderById (id) {
     return await requestJson('GET', `/orders/${id}`)
   }
 
+  // Создает новый заказ
   async function createOrder (orderData) {
     return await requestJson('POST', '/orders', { body: orderData })
   }
 
+  // Обновляет данные заказа
   async function updateOrder (id, patchData) {
     return await requestJson('PUT', `/orders/${id}`, { body: patchData })
   }
 
+  // Удаляет заказ
   async function deleteOrder (id) {
     return await requestJson('DELETE', `/orders/${id}`)
   }
 
+  // Экспорт всех функций API для использования в других модулях
   window.WebExamApi = {
     API_HOST,
     API_PREFIX,
@@ -196,9 +235,9 @@
     deleteOrder
   }
 
-  // Установка API ключа по умолчанию, если он еще не установлен
+  // Установка API ключа по умолчанию - всегда используем нужный ключ
   const DEFAULT_API_KEY = '07ad9b1b-9a18-4e25-8eeb-5c6b5f3cb362'
-  if (!getApiKey()) {
-    setApiKey(DEFAULT_API_KEY)
-  }
+  
+  // Всегда устанавливаем нужный API ключ
+  setApiKey(DEFAULT_API_KEY)
 })()
