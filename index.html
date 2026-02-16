@@ -4,99 +4,84 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Каталог товаров</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/catalog.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
-<body class="min-vh-100 d-flex flex-column">
-  <header class="border-bottom bg-white sticky-top">
-    <div class="container py-3">
-      <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
-
-        <a href="index.html" class="text-decoration-none d-flex align-items-center gap-2"> <span class="fs-4 fw-semibold text-dark">noAmazon</span></a>
-
-        <div class="flex-grow-1 position-relative" id="searchBox">
-          <div class="input-group">
-            <span class="input-group-text bg-white"> <i class="bi bi-search"></i></span>
-            <input type="text" class="form-control" id="searchInput" placeholder="Поиск по названию…" autocomplete="off">
-            <button class="btn btn-primary" type="button" id="searchButton">Найти</button>
+<body class="page">
+  <header class="header">
+      <div class="container">
+          <div class="headerContent">
+              <div class="logo">
+                  <h1>noAmazon</h1>
+              </div>
+              <div class="headerActions">
+                  <div class="searchContainer">
+                      <input type="text" id="searchInput" class="searchInput" placeholder="Поиск товаров...">
+                      <div id="autocompleteDropdown" class="autocompleteDropdown"></div>
+                      <button id="searchBtn" class="btn">Найти</button>
+                  </div>
+                    <a href="index.html" class="iconLink">
+                        <span class="icon">Каталог</span>
+                    </a>
+                  <a href="korzina.html" class="iconLink korzinaLink">
+                      <span class="icon">Корзина</span>
+                      <span class="badge" id="korzinaBadge">0</span>
+                  </a>
+                  <a href="profile.html" class="iconLink profileLink">
+                      <span class="icon">Профиль</span>
+                  </a>
+              </div>
           </div>
-        </div>
-
-        <nav class="d-flex align-items-center gap-2">
-          <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="korzina.html" aria-label="Перейти в корзину" title="Корзина"> <i class="bi bi-cart"></i> <span class="d-none d-md-inline">Корзина</span> <span class="badge text-bg-secondary" id="korzinaCountBadge">0</span> </a>
-          <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="profile.html" aria-label="Перейти в личный кабинет" title="Личный кабинет"> <i class="bi bi-person"></i> <span class="d-none d-md-inline">Личный Кабинет</span></a>
-        </nav>
       </div>
-    </div>
   </header>
 
-
-  <div class="container mt-3">
-    <div id="notifications" class="d-grid gap-2"></div>
+  <!-- Уведомления -->
+  <div class="container">
+    <div id="notifications" class="alerts"></div>
   </div>
 
-
-  <main class="container my-4 flex-grow-1">
-    <div class="row g-4">
-
-
-      <aside class="col-12 col-lg-3">
-        <div class="border rounded-3 p-3 bg-white">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="h5 m-0">Фильтры</h2>
-            <button class="btn btn-sm btn-outline-secondary" type="button" id="resetFiltersBtn">Сбросить</button>
+  <main class="mainContent">
+    <div class="layoutGrid">
+      <!-- Боковая панель -->
+      <aside class="sidebar">
+          <div class="filterSection">
+              <h2>Фильтры</h2>
+              <form id="filterForm">
+                  <div class="filterGroup">
+                      <h3>Категория товара</h3>
+                      <div id="categoryFilters" class="checkboxGroup">
+                          <!-- Категории будут добавлены динамически -->
+                      </div>
+                  </div>
+                  <div class="filterGroup">
+                      <h3>Стоимость</h3>
+                      <div class="priceRange">
+                          <input type="number" id="priceFrom" placeholder="От" min="0" step="0.01">
+                          <span>-</span>
+                          <input type="number" id="priceTo" placeholder="До" min="0" step="0.01">
+                      </div>
+                  </div>
+                  <div class="filterGroup">
+                      <label class="checkboxLabel">
+                          <input type="checkbox" id="discountOnly">
+                          <span>Только товары со скидкой</span>
+                      </label>
+                  </div>
+                  <div class="filterGroup">При наличии скидки учитывается цена со скидкой.</div>
+                  <button type="submit" class="btn">Применить</button>
+              </form>
           </div>
-
-          <form id="filtersForm" class="d-grid gap-3">
-
-            <div>
-              <div class="fw-semibold mb-2">Категория</div>
-              <div id="categoriesBox" class="d-grid gap-2">
-                <!-- создаст JS -->
-                <div class="text-muted small">Категории загружаются…</div>
-              </div>
-            </div>
-
-
-            <div>
-              <div class="fw-semibold mb-2">Стоимость</div>
-              <div class="row g-2">
-                <div class="col-6">
-                  <label class="form-label small" for="priceFrom">От</label>
-                  <input type="number" class="form-control" id="priceFrom" min="0" step="1" placeholder="0">
-                </div>
-                <div class="col-6">
-                  <label class="form-label small" for="priceTo">До</label>
-                  <input type="number" class="form-control" id="priceTo" min="0" step="1" placeholder="999999">
-                </div>
-              </div>
-              <div class="form-text">
-                При наличии скидки учитывается цена со скидкой.
-              </div>
-            </div>
-
-
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="discountOnly">
-              <label class="form-check-label" for="discountOnly">Только товары со скидкой</label>
-            </div>
-
-            <button class="btn btn-primary w-100" type="submit" id="applyFiltersBtn">Применить</button>
-          </form>
-        </div>
       </aside>
 
-
-      <section class="col-12 col-lg-9">
-        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
-          <h1 class="h4 m-0">Каталог</h1>
-
-          <div class="d-flex align-items-center gap-2">
-            <label class="form-label m-0 small text-muted" for="sortSelect">Сортировка:</label>
-            <select class="form-select" id="sortSelect" style="max-width: 280px;">
+      <section class="content">
+        <div class="contentHeader">
+          <h1 class="title">Каталог</h1>
+          <div class="sort">
+            <label class="label">Сортировка:</label>
+            <select class="select" id="sortSelect">
               <option value="rating_desc">Рейтинг: по убыванию</option>
               <option value="rating_asc">Рейтинг: по возрастанию</option>
               <option value="price_desc">Цена: по убыванию</option>
@@ -104,39 +89,27 @@
             </select>
           </div>
         </div>
-
-        <div class="text-muted small mb-3" id="catalogMeta"></div>
-
-        <div class="row g-3" id="goodsGrid">
-          <!-- создаст JS -->
+<!-- 2 вариант: частичное отображение каталога -->
+        <div class="meta" id="catalogMeta"></div>
+        <div class="goodsGrid" id="goodsGrid"></div>
+        <div class="loadMore">
+          <button class="btn" id="loadMoreBtn">Загрузить ещё</button>
         </div>
-
-        <div class="d-none text-center text-muted py-5" id="emptyState">Нет товаров, соответствующих вашему запросу.</div>
-
-        <div class="d-flex justify-content-center mt-4">
-          <button class="btn btn-outline-primary d-none" type="button" id="loadMoreBtn">Загрузить ещё</button>
-        </div>
-
-
-        <div class="d-flex justify-content-center mt-3 d-none" id="loadingIndicator" aria-live="polite">
-          <div class="spinner-border" role="status" aria-label="Загрузка"></div>
+        <div class="loading" id="loadingIndicator">
         </div>
       </section>
-
     </div>
   </main>
 
-  <footer class="border-top bg-white mt-auto">
-    <div class="container py-4">
-      <div class="text-center text-muted">
-        <div class="text-muted">© 2025 noAmazon</div>
-        <div class="text-muted">Контакты: noamazon@example.com</div>
+  <footer class="footer">
+    <div class="container">
+      <div class="footerContent">
+        <p>Контакты: noamazon@example.com</p>
+        <p>&copy; 2026 noAmazon</p>
       </div>
     </div>
   </footer>
 
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="js/api.js" defer></script>
   <script src="js/storage.js" defer></script>
   <script src="js/catalog.js" defer></script>
