@@ -1,145 +1,131 @@
+// Загрузка, фильтрация, сортировка, поиск, добавление в корзину
+
 (() => {
-  'use strict'
+  'use strict';
 
-  const PER_PAGE = 12
+  const PER_PAGE = 12; // Товаров на страницу
 
-  let page = 1
-  let totalLoaded = 0
-  let lastQuery = ''
-  let activeFilters = {
+  let page = 1;           // Текущая страница
+  let totalLoaded = 0;    // Сколько уже загружено
+  let lastQuery = '';     // Последний поисковый запрос
+  let activeFilters = {   // Активные фильтры
     categories: new Set(),
     priceFrom: null,
     priceTo: null,
     discountOnly: false,
     sort: 'rating_desc'
+  };
+
+  const qs = sel => document.querySelector(sel);
+  const qsa = sel => Array.from(document.querySelectorAll(sel));
+
+  // Скрывает/показывает элемент
+  function setHidden(el, hidden) {
+    if (!el) return;
+    el.classList.toggle('hidden', Boolean(hidden));
   }
 
-  // Возвращает первый элемент по селектору
-  function qs (sel) {
-    return document.querySelector(sel)
+  // Показывает индикатор загрузки
+  function showLoading(show) {
+    setHidden(qs('#loadingIndicator'), !show);
   }
 
-  // Возвращает все элементы по селектору
-  function qsa (sel) {
-    return Array.from(document.querySelectorAll(sel))
+  // Обновляет счётчик товаров в корзине (на иконке)
+  function updateCartBadge() {
+    const badge = qs('#korzinaBadge');
+    if (badge) {
+      badge.textContent = window.WebExamStorage.getCartCount();
+    }
   }
 
-  // Скрывает/отображает элемент
-  function setHidden (el, hidden) {
-    if (!el) return
-    el.classList.toggle('d-none', Boolean(hidden))
-  }
+  // Отображает категории товаров (динамически)
+  function renderCategories(items) {
+    const box = qs('#categoryFilters');
+    if (!box) return;
 
-  // Показывает/скрывает индикатор загрузки
-  function showLoading (show) {
-    setHidden(qs('#loadingIndicator'), !show)
-  }
-
-  // Обновляет значок количества товаров в корзине
-  function updateCartBadge () {
-    const badge = qs('#korzinaCountBadge')
-    if (!badge) return
-    badge.textContent = window.WebExamStorage.getCartCount()
-  }
-
-  // Отображает категории для фильтрации
-  function renderCategories (items) {
-    const box = qs('#categoriesBox')
-    if (!box) return
-
-    const categories = Array.from(
-      new Set(items.map(i => i.category).filter(Boolean))
-    )
+    const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
 
     if (categories.length === 0) {
-      box.innerHTML = '<div class="text-muted small">Нет категорий</div>'
-      return
+      box.innerHTML = '<div class="text-muted small">Нет категорий</div>';
+      return;
     }
 
-    box.innerHTML = categories
-      .map(cat => {
-        const id = `cat_${cat}`
-        return `
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="${id}" value="${cat}">
-            <label class="form-check-label" for="${id}">${cat}</label>
-          </div>
-        `
-      })
-      .join('')
+    box.innerHTML = categories.map(cat => {
+      const id = `cat_${cat}`;
+      return `
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="${id}" value="${cat}" class="check">
+            ${cat}
+          </label>
+        </div>`;
+    }).join('');
   }
 
-  // Создает HTML-разметку карточки товара
-  function buildCard (item) {
-    const inCart = window.WebExamStorage.isInCart(item.id)
+  // Генерирует карточку товара
+  function buildCard(item) {
+    const imageUrl = item._raw.image_url 
+      ? item._raw.image_url 
+      : '/img/no-image.png';
 
-    const ratingHtml = item.rating
-      ? `<div class="text-muted small mb-1">Рейтинг: ${Number(item.rating).toFixed(1)}</div>`
-      : ''
+    const inCart = window.WebExamStorage.isInCart(item.id);
 
-    const actualPrice = Number(item._raw?.actual_price)
-    const discountPrice = Number(item._raw?.discount_price)
-    const hasDiscount = Number.isFinite(discountPrice) && discountPrice > 0 && discountPrice < actualPrice
-
-    const priceHtml = hasDiscount
-      ? `<div class="d-flex align-items-baseline gap-2">
-          <div class="fw-semibold">${window.WebExamStorage.formatPrice(item.price)}</div>
-          <div class="text-muted text-decoration-line-through small">${window.WebExamStorage.formatPrice(actualPrice)}</div>
-        </div>`
-      : `<div class="fw-semibold">${window.WebExamStorage.formatPrice(item.price)}</div>`
+    const hasDiscount = Number.isFinite(item._raw.discount_price) &&
+                        item._raw.discount_price > 0 &&
+                        item._raw.discount_price < item._raw.actual_price;
 
     return `
-      <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100">
-          <img src="${item.image}" class="card-img-top" alt="${item.title}">
-          <div class="card-body d-flex flex-column">
-            <h3 class="h6">${item.title}</h3>
-            <div class="text-muted small mb-1">${item.category}</div>
-            ${ratingHtml}
-            ${priceHtml}
-            <button
-              class="btn ${inCart ? 'btn-secondary' : 'btn-primary'} mt-auto"
-              data-id="${item.id}"
-              ${inCart ? 'disabled' : ''}
-            >
+      <div class="goodCard">
+        <img 
+          src="${imageUrl}" 
+          alt="${item.title}" 
+          class="goodCardImage" 
+          onerror="this.src='/img/no-image.png'; this.onerror=null;"
+        >
+        <div class="goodCardContent">
+          <h3 class="goodCardTitle">${item.title}</h3>
+          <div class="goodCardRating">⭐ ${item.rating.toFixed(1)}</div>
+          <div class="goodCardPrice">
+            <div class="priceCurrent">${window.WebExamStorage.formatPrice(item.price)}</div>
+            ${hasDiscount 
+              ? `<div class="priceOld">${window.WebExamStorage.formatPrice(item._raw.actual_price)}</div>` 
+              : ''}
+          </div>
+          <div class="goodCardActions">
+            <button class="btn btnPrimary" data-id="${item.id}" ${inCart ? 'disabled' : ''}>
               ${inCart ? 'В корзине' : 'В корзину'}
             </button>
           </div>
         </div>
-      </div>
-    `
+      </div>`;
   }
 
-  // Отображает товары в сетке
-  function renderGoods (items, append = false) {
-    const grid = qs('#goodsGrid')
-    const empty = qs('#emptyState')
-    if (!grid || !empty) return
+  // Отображает список товаров
+  function renderGoods(items, append = false) {
+    const grid = qs('#goodsGrid');
+    const empty = qs('#emptyState');
+    if (!grid) return;
 
-    if (!append) grid.innerHTML = ''
+    if (!append) grid.innerHTML = '';
 
     if (!items || items.length === 0) {
-      setHidden(empty, false)
-      return
+      setHidden(empty, false);
+      return;
     }
 
-    setHidden(empty, true)
-
-    grid.insertAdjacentHTML(
-      'beforeend',
-      items.map(buildCard).join('')
-    )
+    setHidden(empty, true);
+    grid.insertAdjacentHTML('beforeend', items.map(buildCard).join(''));
   }
 
-  // Загружает товары с сервера (с пагинацией)
-  async function loadGoods ({ reset = false } = {}) {
+  // Загружает товары с сервера
+  async function loadGoods({ reset = false } = {}) {
     if (reset) {
-      page = 1
-      totalLoaded = 0
-      renderGoods([], false)
+      page = 1;
+      totalLoaded = 0;
+      renderGoods([], false);
     }
 
-    showLoading(true)
+    showLoading(true);
 
     try {
       const params = {
@@ -147,108 +133,79 @@
         per_page: PER_PAGE,
         query: lastQuery,
         sort_order: activeFilters.sort
-      }
+      };
 
-      const data = await window.WebExamApi.getGoods(params)
+      const data = await window.WebExamApi.getGoods(params);
+      const items = data.items || [];
 
-      const items = Array.isArray(data.items) ? data.items : []
-      const total = Number(data.total) || 0
+      if (page === 1) renderCategories(items);
+      renderGoods(items, page > 1);
+      totalLoaded += items.length;
 
-      if (page === 1) {
-        renderCategories(items)
-      }
-
-      renderGoods(items, page > 1)
-
-      totalLoaded += items.length
-
-      setHidden(
-        qs('#loadMoreBtn'),
-        totalLoaded >= total
-      )
-
-      page += 1
+      setHidden(qs('#loadMoreBtn'), totalLoaded >= data.total);
+      page++;
     } catch (e) {
-      renderGoods([], false)
+      console.error('Ошибка загрузки товаров:', e);
+      notify('danger', 'Не удалось загрузить товары.');
+      renderGoods([], false);
     } finally {
-      showLoading(false)
+      showLoading(false);
     }
   }
 
-  // Обрабатывает клик по кнопке "В корзину"
-  function onGridClick (e) {
-    const btn = e.target.closest('button[data-id]')
-    if (!btn) return
+  // Обработка клика по кнопке "В корзину"
+  function onGridClick(e) {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
 
-    const id = btn.getAttribute('data-id')
-    window.WebExamStorage.addToCart(id)
-
-    btn.textContent = 'В корзине'
-    btn.classList.remove('btn-primary')
-    btn.classList.add('btn-secondary')
-    btn.disabled = true
-
-    updateCartBadge()
+    const id = btn.dataset.id;
+    window.WebExamStorage.addToCart(id);
+    btn.textContent = 'В корзине';
+    btn.disabled = true;
+    updateCartBadge();
   }
 
-  // Применяет фильтры из формы
-  function applyFiltersFromForm () {
-    const form = qs('#filtersForm')
-    if (!form) return
-
-    activeFilters.categories.clear()
-
-    qsa('#categoriesBox input[type="checkbox"]:checked')
-      .forEach(cb => activeFilters.categories.add(cb.value))
-
-    const pf = qs('#priceFrom')?.value
-    const pt = qs('#priceTo')?.value
-
-    activeFilters.priceFrom = pf ? Number(pf) : null
-    activeFilters.priceTo = pt ? Number(pt) : null
-    activeFilters.discountOnly = Boolean(qs('#discountOnly')?.checked)
+  // Показывает уведомление
+  function notify(type, text) {
+    const box = qs('#notifications');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = `alert alert-${type}`;
+    el.textContent = text;
+    box.prepend(el);
+    setTimeout(() => el.remove(), 3000);
   }
 
-  // Привязывает все обработчики событий и инициализирует страницу
-  function bind () {
-    updateCartBadge()
+  // Привязка событий
+  function bind() {
+    updateCartBadge();
+    qs('#goodsGrid')?.addEventListener('click', onGridClick);
+    qs('#loadMoreBtn')?.addEventListener('click', () => loadGoods());
+    
+    // Применение фильтров
+    qs('#filterForm')?.addEventListener('submit', e => {
+      e.preventDefault();
+      loadGoods({ reset: true });
+    });
 
-    qs('#goodsGrid')?.addEventListener('click', onGridClick)
+    // Сортировка
+    qs('#sortSelect')?.addEventListener('change', e => {
+      activeFilters.sort = e.target.value;
+      loadGoods({ reset: true });
+    });
 
-    qs('#loadMoreBtn')?.addEventListener('click', () => loadGoods())
+    // Поиск (через кастомное событие)
+    window.addEventListener('webexam:search', e => {
+      lastQuery = e.detail?.query || '';
+      loadGoods({ reset: true });
+    });
 
-    qs('#filtersForm')?.addEventListener('submit', (e) => {
-      e.preventDefault()
-      applyFiltersFromForm()
-      loadGoods({ reset: true })
-    })
+    // Обновление корзины при изменении
+    window.addEventListener('webexam:korzina-updated', updateCartBadge);
 
-    qs('#resetFiltersBtn')?.addEventListener('click', () => {
-      qs('#filtersForm')?.reset()
-      activeFilters = {
-        categories: new Set(),
-        priceFrom: null,
-        priceTo: null,
-        discountOnly: false,
-        sort: 'rating_desc'
-      }
-      loadGoods({ reset: true })
-    })
-
-    qs('#sortSelect')?.addEventListener('change', (e) => {
-      activeFilters.sort = e.target.value
-      loadGoods({ reset: true })
-    })
-
-    window.addEventListener('webexam:search', (e) => {
-      lastQuery = e.detail?.query || ''
-      loadGoods({ reset: true })
-    })
-
-    window.addEventListener('webexam:korzina-updated', updateCartBadge)
-
-    loadGoods({ reset: true })
+    // Первая загрузка
+    loadGoods({ reset: true });
   }
 
-  document.addEventListener('DOMContentLoaded', bind)
-})()
+  document.addEventListener('DOMContentLoaded', bind);
+})();
